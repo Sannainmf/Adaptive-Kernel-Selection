@@ -1,6 +1,6 @@
 # Adaptive Kernel Selection for Multi-Scale CNN Feature Extraction
 
-This repository contains code, trained models, and experimental results from:
+This repository contains code for 3 layer, 6 layer, and 8 layer (VGG11) CNN models across multiple datasets.
 
 > "Adaptive Kernel Selection: Performance Pattern Analysis Across Network Depth Hierarchies and Dataset Complexities"
 
