@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+"""
+VGG11 with 8 Adaptive Kernel Selection Layers
+VGG11 architecture with adaptive kernel selection after each conv layer
+Based on your original summer 2025 experiments
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -52,11 +59,11 @@ class AdaptiveVGG11(nn.Module):
     VGG11 config: [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
     Adaptive layers after each conv layer (8 total)
     """
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, input_channels=3):
         super(AdaptiveVGG11, self).__init__()
         
         # Block 1: 64 channels
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(input_channels, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
         self.adaptive1 = AdaptiveKernelSelector(64)
         self.bn1_adaptive = nn.BatchNorm2d(64)
@@ -182,12 +189,12 @@ class StandardVGG11(nn.Module):
     """
     Standard VGG11 baseline for comparison
     """
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, input_channels=3):
         super(StandardVGG11, self).__init__()
         
         self.features = nn.Sequential(
             # Block 1
-            nn.Conv2d(3, 64, kernel_size=3, padding=1),
+            nn.Conv2d(input_channels, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
@@ -244,29 +251,64 @@ class StandardVGG11(nn.Module):
 
 
 def get_data_loaders(batch_size=128, dataset='cifar10'):
-    """Get CIFAR-10 or CIFAR-100 data loaders"""
+    """Get CIFAR-10, CIFAR-100, or FashionMNIST data loaders"""
     
-    transform_train = transforms.Compose([
-        transforms.RandomCrop(28, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.2860,), (0.3530,))
-    ])
-
-    transform_val = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.2860,), (0.3530,))
-    ])
-
-    train_dataset = torchvision.datasets.FashionMNIST(
-        root='./data', train=True, download=True, transform=transform_train)
-    val_dataset = torchvision.datasets.FashionMNIST(
-        root='./data', train=False, download=True, transform=transform_val)
-    num_classes = 10
-
+    if dataset == 'fashionmnist':
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.2860,), (0.3530,)),
+        ])
+        transform_val = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.2860,), (0.3530,)),
+        ])
+        train_dataset = torchvision.datasets.FashionMNIST(
+            root='./data', train=True, download=True, transform=transform_train)
+        val_dataset = torchvision.datasets.FashionMNIST(
+            root='./data', train=False, download=True, transform=transform_val)
+        num_classes = 10
+        
+    elif dataset == 'cifar100':
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+        
+        transform_val = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+        
+        train_dataset = torchvision.datasets.CIFAR100(
+            root='./data', train=True, download=True, transform=transform_train)
+        val_dataset = torchvision.datasets.CIFAR100(
+            root='./data', train=False, download=True, transform=transform_val)
+        num_classes = 100
+        
+    else:  # cifar10
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+        
+        transform_val = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+        
+        train_dataset = torchvision.datasets.CIFAR10(
+            root='./data', train=True, download=True, transform=transform_train)
+        val_dataset = torchvision.datasets.CIFAR10(
+            root='./data', train=False, download=True, transform=transform_val)
+        num_classes = 10
+    
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
-
+    
     return train_loader, val_loader, num_classes
 
 
@@ -425,6 +467,9 @@ def run_experiment(seeds=[42, 123, 456], num_epochs=50, dataset='cifar10'):
     
     train_loader, val_loader, num_classes = get_data_loaders(dataset=dataset)
     
+    # Determine input channels based on dataset
+    input_channels = 1 if dataset == 'fashionmnist' else 3
+    
     all_results = {
         'adaptive': {'train_loss': [], 'val_acc': [], 'final_acc': []},
         'standard': {'train_loss': [], 'val_acc': [], 'final_acc': []},
@@ -441,7 +486,7 @@ def run_experiment(seeds=[42, 123, 456], num_epochs=50, dataset='cifar10'):
         
         # Train Adaptive VGG11
         print("\nTraining Adaptive VGG11 (8 adaptive layers)...")
-        adaptive_model = AdaptiveVGG11(num_classes=num_classes)
+        adaptive_model = AdaptiveVGG11(num_classes=num_classes, input_channels=input_channels)
         train_loss_a, val_acc_a = train_model(adaptive_model, train_loader, val_loader, 
                                                num_epochs=num_epochs, device=device)
         all_results['adaptive']['train_loss'].append(train_loss_a)
@@ -455,7 +500,7 @@ def run_experiment(seeds=[42, 123, 456], num_epochs=50, dataset='cifar10'):
         # Train Standard VGG11
         print("\nTraining Standard VGG11...")
         torch.manual_seed(seed)
-        standard_model = StandardVGG11(num_classes=num_classes)
+        standard_model = StandardVGG11(num_classes=num_classes, input_channels=input_channels)
         train_loss_s, val_acc_s = train_model(standard_model, train_loader, val_loader,
                                                num_epochs=num_epochs, device=device)
         all_results['standard']['train_loss'].append(train_loss_s)
