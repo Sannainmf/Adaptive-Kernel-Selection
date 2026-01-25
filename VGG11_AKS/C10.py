@@ -431,7 +431,7 @@ def plot_results(results, train_losses_adaptive, train_losses_standard,
     print("\nResults saved to 'results/vgg11_8_layer_adaptive_results.png'")
 
 
-def run_experiment(seeds=[42, 123, 456], num_epochs=50, dataset='cifar10'):
+def run_experiment(seeds=[1, 24, 65], num_epochs=50, dataset='cifar10'):
     """Run multi-seed experiment"""
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -523,4 +523,4 @@ if __name__ == "__main__":
     print("Epochs: 50")
     print("="*60)
     
-    results = run_experiment(seeds=[42, 123, 456], num_epochs=30, dataset='cifar10')
+    results = run_experiment(seeds=[1, 24, 65], num_epochs=30, dataset='cifar10')
