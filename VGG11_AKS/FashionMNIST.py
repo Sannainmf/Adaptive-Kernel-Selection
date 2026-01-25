@@ -2,7 +2,6 @@
 """
 VGG11 with 8 Adaptive Kernel Selection Layers
 VGG11 architecture with adaptive kernel selection after each conv layer
-Based on your original summer 2025 experiments
 """
 
 import torch

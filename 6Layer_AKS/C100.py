@@ -1,3 +1,8 @@
+#Areen Patil, Summer 2025
+"""
+6-Layer CNN with 6 Adaptive Kernel Selection Layers
+6-layer CNN architecture with adaptive kernel selection after each conv layer
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
