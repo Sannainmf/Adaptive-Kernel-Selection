@@ -1,61 +1,30 @@
-# Adaptive Kernel Selection for CNNs
+# Adaptive Kernel Selection for Convolutional Neural Networks
 
-**Areen Patil, Summer 2025**
+This repository contains the training scripts for the paper:
 
-CNNs with adaptive kernel selection layers. Instead of using fixed kernel sizes, the network learns to pick between 3×3, 5×5, and 7×7 kernels based on the input features.
+> "Adaptive Kernel Selection in Multi-Layer Convolutional Neural Networks" (accepted, IEEE ICMLA 2025)
 
-## Project Structure
+## Overview
+
+Standard CNNs fix the kernel size of every convolution at design time. We add an Adaptive Kernel Selection (AKS) module after each convolution that lets the network choose its receptive field per input. The module pools the incoming feature map, runs a small MLP to produce softmax weights over 3×3, 5×5, and 7×7 kernels, applies all three convolutions in parallel, and returns their weighted sum. We embed AKS into a 3-layer CNN, a 6-layer CNN, and VGG11, and compare each against its fixed-kernel baseline on CIFAR-10, CIFAR-100, and Fashion-MNIST. Every script trains both the adaptive model and the baseline over several seeds and saves the training curves and per-layer kernel-selection heatmaps.
+
+## Repository Contents
 
 ```
-Adaptive-Kernel-Selection/
-├── 3Layer_AKS/
-│   ├── C10.py          # CIFAR-10 experiments
-│   ├── C100.py         # CIFAR-100 experiments
-│   └── FashionMNIST.py # Fashion-MNIST experiments
-├── 6Layer_AKS/
-│   ├── C10.py          # CIFAR-10 experiments
-│   ├── C100.py         # CIFAR-100 experiments
-│   └── FashionMNIST.py # Fashion-MNIST experiments
-├── VGG11_AKS/
-│   ├── C10.py          # CIFAR-10 experiments
-│   ├── C100.py         # CIFAR-100 experiments
-│   └── FashionMNIST.py # Fashion-MNIST experiments
-└── README.md
+3Layer_AKS/                        # 3 conv layers, each followed by an AKS module
+├── C10.py                         # CIFAR-10
+├── C100.py                        # CIFAR-100
+└── FashionMNIST.py                # Fashion-MNIST
+
+6Layer_AKS/                        # 6 conv layers, each followed by an AKS module
+├── C10.py
+├── C100.py
+└── FashionMNIST.py
+
+VGG11_AKS/                         # VGG11 (8 conv layers), each followed by an AKS module
+├── C10.py
+├── C100.py
+└── FashionMNIST.py
 ```
 
-## How It Works
-
-The `AdaptiveKernelSelector` module:
-1. Takes feature maps and extracts channel stats using global average pooling
-2. Runs a small MLP to predict weights for each kernel size (3×3, 5×5, 7×7)
-3. Applies all three convolutions in parallel
-4. Combines the outputs using the predicted weights
-
-Each architecture has adaptive layers after the conv layers:
-- **3Layer_AKS**: 3 conv layers, 3 adaptive layers
-- **6Layer_AKS**: 6 conv layers, 6 adaptive layers  
-- **VGG11_AKS**: 8 conv layers, 8 adaptive layers (VGG11-style)
-
-## Setup
-
-```bash
-pip install torch torchvision numpy matplotlib
-```
-
-## Usage
-
-Just run the scripts:
-
-```bash
-cd 6Layer_AKS
-python C10.py
-```
-
-Each script trains both an adaptive model and a standard baseline, then compares them. Results (training curves, kernel selection heatmaps) get saved to a `results/` folder.
-
-You can tweak the experiment settings in `run_experiment()`:
-- `seeds`: random seeds (default: [1, 24, 65])
-- `num_epochs`: training epochs
-- `dataset`: 'cifar10', 'cifar100', or 'fashionmnist'
-
-Default training uses Adam optimizer (lr=0.001), batch size 128, and standard data augmentation for CIFAR datasets.
+Each script is self-contained: it defines the AKS module, the adaptive model, and the baseline, downloads the dataset through torchvision, and writes its outputs to a `results/` folder. Requires PyTorch, torchvision, NumPy, and Matplotlib.

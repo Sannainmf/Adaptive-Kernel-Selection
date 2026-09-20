@@ -53,91 +53,69 @@ class AdaptiveKernelSelector(nn.Module):
 
 class AdaptiveReceptiveFieldCNN(nn.Module):
     """
-    12-layer CNN with 6 adaptive kernel selection modules
-    Architecture: 6 blocks, each with conv + adaptive layer
+    6-layer CNN with 3 adaptive kernel selection modules
+    Architecture: conv1 -> adaptive1 -> conv2 -> adaptive2 -> conv3 -> adaptive3
     """
     def __init__(self, num_classes=10):
         super(AdaptiveReceptiveFieldCNN, self).__init__()
         
-        # Block 1: Input processing (64 channels)
+        # Initial conv layer
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
+        
+        # Adaptive layer 1
         self.adaptive1 = AdaptiveKernelSelector(64)
         self.bn2 = nn.BatchNorm2d(64)
         
-        # Block 2: First feature extraction (64 channels)
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(64)
-        self.adaptive2 = AdaptiveKernelSelector(64)
-        self.bn4 = nn.BatchNorm2d(64)
+        # Conv layer 2 with downsampling
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2)
+        self.bn3 = nn.BatchNorm2d(128)
         
-        # Block 3: Downsample to 128 channels
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2)
-        self.bn5 = nn.BatchNorm2d(128)
-        self.adaptive3 = AdaptiveKernelSelector(128)
-        self.bn6 = nn.BatchNorm2d(128)
+        # Adaptive layer 2
+        self.adaptive2 = AdaptiveKernelSelector(128)
+        self.bn4 = nn.BatchNorm2d(128)
         
-        # Block 4: Feature refinement (128 channels)
-        self.conv4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.bn7 = nn.BatchNorm2d(128)
-        self.adaptive4 = AdaptiveKernelSelector(128)
-        self.bn8 = nn.BatchNorm2d(128)
+        # Conv layer 3 with downsampling
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2)
+        self.bn5 = nn.BatchNorm2d(256)
         
-        # Block 5: Downsample to 256 channels
-        self.conv5 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2)
-        self.bn9 = nn.BatchNorm2d(256)
-        self.adaptive5 = AdaptiveKernelSelector(256)
-        self.bn10 = nn.BatchNorm2d(256)
+        # Adaptive layer 3
+        self.adaptive3 = AdaptiveKernelSelector(256)
+        self.bn6 = nn.BatchNorm2d(256)
         
-        # Block 6: Final feature extraction (256 channels)
-        self.conv6 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.bn11 = nn.BatchNorm2d(256)
-        self.adaptive6 = AdaptiveKernelSelector(256)
-        self.bn12 = nn.BatchNorm2d(256)
-        
-        # Classification head
+        # Global average pooling and classifier
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(256, num_classes)
+        
+        # Store attention weights for analysis
         self.attention_weights = []
         
     def forward(self, x):
         self.attention_weights = []
         
-        # Block 1
+        # Initial conv
         x = F.relu(self.bn1(self.conv1(x)))
+        
+        # Adaptive layer 1
         x, weights1 = self.adaptive1(x)
         x = F.relu(self.bn2(x))
         self.attention_weights.append(weights1)
         
-        # Block 2
+        # Conv layer 2
         x = F.relu(self.bn3(self.conv2(x)))
+        
+        # Adaptive layer 2
         x, weights2 = self.adaptive2(x)
         x = F.relu(self.bn4(x))
         self.attention_weights.append(weights2)
         
-        # Block 3
+        # Conv layer 3
         x = F.relu(self.bn5(self.conv3(x)))
+        
+        # Adaptive layer 3
         x, weights3 = self.adaptive3(x)
         x = F.relu(self.bn6(x))
         self.attention_weights.append(weights3)
-        
-        # Block 4
-        x = F.relu(self.bn7(self.conv4(x)))
-        x, weights4 = self.adaptive4(x)
-        x = F.relu(self.bn8(x))
-        self.attention_weights.append(weights4)
-        
-        # Block 5
-        x = F.relu(self.bn9(self.conv5(x)))
-        x, weights5 = self.adaptive5(x)
-        x = F.relu(self.bn10(x))
-        self.attention_weights.append(weights5)
-        
-        # Block 6
-        x = F.relu(self.bn11(self.conv6(x)))
-        x, weights6 = self.adaptive6(x)
-        x = F.relu(self.bn12(x))
-        self.attention_weights.append(weights6)
         
         # Classification
         x = self.gap(x)
@@ -149,76 +127,40 @@ class AdaptiveReceptiveFieldCNN(nn.Module):
 
 class StandardCNN(nn.Module):
     """
-    Standard CNN baseline for comparison (12 conv layers, no adaptive)
+    Standard CNN baseline for comparison (6 conv layers, no adaptive)
     """
     def __init__(self, num_classes=10):
         super(StandardCNN, self).__init__()
         
-        # Block 1
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
+        
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
         
-        # Block 2
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm2d(64)
-        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2)
+        self.bn3 = nn.BatchNorm2d(128)
         
-        # Block 3
-        self.conv5 = nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2)
-        self.bn5 = nn.BatchNorm2d(128)
-        self.conv6 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.bn6 = nn.BatchNorm2d(128)
+        self.conv4 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(128)
         
-        # Block 4
-        self.conv7 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.bn7 = nn.BatchNorm2d(128)
-        self.conv8 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
-        self.bn8 = nn.BatchNorm2d(128)
+        self.conv5 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2)
+        self.bn5 = nn.BatchNorm2d(256)
         
-        # Block 5
-        self.conv9 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2)
-        self.bn9 = nn.BatchNorm2d(256)
-        self.conv10 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.bn10 = nn.BatchNorm2d(256)
-        
-        # Block 6
-        self.conv11 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.bn11 = nn.BatchNorm2d(256)
-        self.conv12 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
-        self.bn12 = nn.BatchNorm2d(256)
+        self.conv6 = nn.Conv2d(256, 256, kernel_size=3, padding=1)
+        self.bn6 = nn.BatchNorm2d(256)
         
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Linear(256, num_classes)
         
     def forward(self, x):
-        # Block 1
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
-        
-        # Block 2
         x = F.relu(self.bn3(self.conv3(x)))
         x = F.relu(self.bn4(self.conv4(x)))
-        
-        # Block 3
         x = F.relu(self.bn5(self.conv5(x)))
         x = F.relu(self.bn6(self.conv6(x)))
         
-        # Block 4
-        x = F.relu(self.bn7(self.conv7(x)))
-        x = F.relu(self.bn8(self.conv8(x)))
-        
-        # Block 5
-        x = F.relu(self.bn9(self.conv9(x)))
-        x = F.relu(self.bn10(self.conv10(x)))
-        
-        # Block 6
-        x = F.relu(self.bn11(self.conv11(x)))
-        x = F.relu(self.bn12(self.conv12(x)))
-        
-        # Classification
         x = self.gap(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
@@ -314,9 +256,9 @@ def train_model(model, train_loader, val_loader, num_epochs=50, device='cuda'):
 
 
 def analyze_kernel_selection(model, val_loader, device='cuda'):
-    """Analyze kernel selection patterns for 6 adaptive layers"""
+    """Analyze kernel selection patterns"""
     model.eval()
-    kernel_selections = {i: [] for i in range(6)}  # 6 adaptive layers
+    kernel_selections = {0: [], 1: [], 2: []}  # 3 adaptive layers
     
     with torch.no_grad():
         for data, _ in val_loader:
@@ -328,7 +270,7 @@ def analyze_kernel_selection(model, val_loader, device='cuda'):
     
     # Aggregate results
     results = {}
-    for layer_idx in range(6):
+    for layer_idx in range(3):
         all_weights = np.concatenate(kernel_selections[layer_idx], axis=0)
         avg_weights = np.mean(all_weights, axis=0)
         results[layer_idx] = avg_weights
@@ -364,50 +306,49 @@ def plot_results(results, train_losses_adaptive, train_losses_standard,
     ax2.legend()
     ax2.grid(True)
     
-    # Kernel Selection Heatmap (6 layers)
+    # Kernel Selection Heatmap
     ax3 = axes[1, 0]
-    heatmap_data = np.array([kernel_selections[i] for i in range(6)])
+    heatmap_data = np.array([kernel_selections[i] for i in range(3)])
     im = ax3.imshow(heatmap_data, cmap='YlOrRd', aspect='auto')
     ax3.set_xlabel('Kernel Size')
     ax3.set_ylabel('Layer')
     ax3.set_xticks([0, 1, 2])
     ax3.set_xticklabels(['3×3', '5×5', '7×7'])
-    ax3.set_yticks(range(6))
-    ax3.set_yticklabels([f'Layer {i+1}' for i in range(6)])
-    ax3.set_title('Kernel Selection Patterns (6 Adaptive Layers)')
+    ax3.set_yticks([0, 1, 2])
+    ax3.set_yticklabels(['Layer 1', 'Layer 2', 'Layer 3'])
+    ax3.set_title('Kernel Selection Patterns (3 Adaptive Layers)')
     plt.colorbar(im, ax=ax3)
     
     # Add values to heatmap
-    for i in range(6):
+    for i in range(3):
         for j in range(3):
-            ax3.text(j, i, f'{heatmap_data[i, j]:.3f}', ha='center', va='center', 
-                    color='white' if heatmap_data[i, j] > 0.5 else 'black', fontsize=8)
+            ax3.text(j, i, f'{heatmap_data[i, j]:.3f}', ha='center', va='center', color='black')
     
     # Bar chart of kernel preferences
     ax4 = axes[1, 1]
-    x = np.arange(6)
+    x = np.arange(3)
     width = 0.25
     
     for i in range(3):
-        ax4.bar(x + i*width, [kernel_selections[layer][i] for layer in range(6)], 
+        ax4.bar(x + i*width, [kernel_selections[layer][i] for layer in range(3)], 
                 width, label=f'{[3,5,7][i]}×{[3,5,7][i]}')
     
     ax4.set_xlabel('Adaptive Layer')
     ax4.set_ylabel('Selection Weight')
     ax4.set_title('Kernel Preferences by Layer')
     ax4.set_xticks(x + width)
-    ax4.set_xticklabels([f'L{i+1}' for i in range(6)])
+    ax4.set_xticklabels(['Layer 1', 'Layer 2', 'Layer 3'])
     ax4.legend()
     ax4.grid(True, axis='y')
     
     plt.tight_layout()
-    plt.savefig('results/6_layer_adaptive_results.png', dpi=300)
+    plt.savefig('results/3_layer_adaptive_results.png', dpi=300)
     plt.show()
     
-    print("\nResults saved to 'results/6_layer_adaptive_results.png'")
+    print("\nResults saved to 'results/3_layer_adaptive_results.png'")
 
 
-def run_experiment(seeds=[1, 24, 65], num_epochs=65, dataset='cifar10'):
+def run_experiment(seeds=[1, 24, 65], num_epochs=50, dataset='cifar10'):
     """Run multi-seed experiment"""
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -430,7 +371,7 @@ def run_experiment(seeds=[1, 24, 65], num_epochs=65, dataset='cifar10'):
         np.random.seed(seed)
         
         # Train Adaptive CNN
-        print("\nTraining Adaptive CNN (6 adaptive layers)...")
+        print("\nTraining Adaptive CNN (3 adaptive layers)...")
         adaptive_model = AdaptiveReceptiveFieldCNN(num_classes=num_classes)
         train_loss_a, val_acc_a = train_model(adaptive_model, train_loader, val_loader, 
                                                num_epochs=num_epochs, device=device)
@@ -454,7 +395,7 @@ def run_experiment(seeds=[1, 24, 65], num_epochs=65, dataset='cifar10'):
     
     # Print summary
     print("\n" + "="*60)
-    print("EXPERIMENT SUMMARY (6-Layer Adaptive CNN)")
+    print("EXPERIMENT SUMMARY (3-Layer Adaptive CNN)")
     print("="*60)
     
     adaptive_mean = np.mean(all_results['adaptive']['final_acc'])
@@ -468,15 +409,15 @@ def run_experiment(seeds=[1, 24, 65], num_epochs=65, dataset='cifar10'):
     
     # Average kernel selections
     avg_kernel_sel = {}
-    for layer in range(6):
+    for layer in range(3):
         avg_kernel_sel[layer] = np.mean([ks[layer] for ks in all_results['kernel_selections']], axis=0)
     
     print("\nKernel Selection Patterns:")
-    for layer in range(6):
+    for layer in range(3):
         print(f"  Layer {layer+1}: 3×3: {avg_kernel_sel[layer][0]:.3f}, "
               f"5×5: {avg_kernel_sel[layer][1]:.3f}, 7×7: {avg_kernel_sel[layer][2]:.3f}")
     
-    # Plot results
+    # Plot results (using last seed's data for curves, averaged kernel selection)
     plot_results(
         all_results,
         all_results['adaptive']['train_loss'][-1],
@@ -491,12 +432,13 @@ def run_experiment(seeds=[1, 24, 65], num_epochs=65, dataset='cifar10'):
 
 if __name__ == "__main__":
     print("="*60)
-    print("6-LAYER ADAPTIVE KERNEL SELECTION CNN EXPERIMENT")
+    print("3-LAYER ADAPTIVE KERNEL SELECTION CNN EXPERIMENT")
     print("="*60)
-    print("Architecture: 12 conv layers with 6 adaptive kernel selectors")
+    print("Architecture: 6 conv layers with 3 adaptive kernel selectors")
     print("Dataset: CIFAR-10")
     print("Seeds: 3")
-    print("Epochs: 65")
+    print("Epochs: 50")
     print("="*60)
     
     results = run_experiment(seeds=[1, 24, 65], num_epochs=30, dataset='cifar10')
+    
